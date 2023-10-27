@@ -1,6 +1,6 @@
 import Derivation
 
-public struct Vanity: Hashable {
+public struct Vanity: Hashable, CustomStringConvertible {
 	public let mnemonic: Mnemonic
 	public let address: String
 	public let details: Details
@@ -16,6 +16,35 @@ public struct Vanity: Hashable {
 		public let maxAttempts: AttemptCount
 		public let maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value
 	}
+	public var summary: Summary {
+		.init(
+			address: address,
+			targetSuffix: input.targetSuffix,
+			mnemonic: mnemonic.phrase.rawValue,
+			derivationPath: details.derivationPath,
+			elapsedTime: details.elapsedTime
+		)
+	}
+	public struct Summary: Equatable, CustomStringConvertible {
+		public let address: String
+		public let targetSuffix: String
+		public let mnemonic: String
+		public let derivationPath: String
+		public let elapsedTime: TimeInterval
+		public var description: String {
+ """
+ ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
+ Address: '\(address)' (🎯: '\(targetSuffix)')
+ Mnemonic: '\(mnemonic)'
+ DerivationPath: '\(derivationPath)'
+ Time: \(elapsedTime)
+ ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
+ """
+		}
+	}
+	public var description: String {
+		summary.description
+	}
 }
 
 public let bech32Alphabet = Set("023456789acdefghjklmnpqrstuvwxyz")
@@ -30,8 +59,8 @@ enum Error: Swift.Error {
 /// Attempts to find a mnemonic for an address ending with `suffix`
 public func findMnemonicFor(
 	suffix targetSuffix: String,
-	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 10,
-	attempts maxAttempts: AttemptCount = 100_000
+	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 2,
+	attempts maxAttempts: AttemptCount = 1_000_000
 ) throws -> Vanity {
 	var attempt: AttemptCount = 0
 	let invalidCharacterSet = Set(targetSuffix).subtracting(bech32Alphabet)
@@ -45,7 +74,7 @@ public func findMnemonicFor(
 	let timeStart = DispatchTime.now()
 	while attempt < maxAttempts {
 		defer { attempt += 1 }
-		if attempt.isMultiple(of: 100) {
+		if attempt.isMultiple(of: 100_000) {
 			print("⏳ \(attempt) Mnemonics tried")
 		}
 		if attempt >= maxAttempts {
@@ -75,7 +104,7 @@ public func findMnemonicFor(
 				let nanoTime = timeEnd.uptimeNanoseconds - timeStart.uptimeNanoseconds // << Difference in nano seconds (UInt64)
 				let elapsedTime = TimeInterval(nanoTime) / 1_000_000_000 // Technically could overflow for long running tests
 
-				return Vanity.init(
+				return Vanity(
 					mnemonic: mnemonic,
 					address: address,
 					details: .init(
