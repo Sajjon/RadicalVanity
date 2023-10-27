@@ -51,7 +51,7 @@ let package = Package(
 		),
 		.target(
 			name: "RadicalVanity",
-			dependencies: ["Cryptography"]
+			dependencies: ["Derivation"]
 		),
         .testTarget(
             name: "RadicalVanityTests",
