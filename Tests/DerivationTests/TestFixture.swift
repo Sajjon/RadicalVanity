@@ -49,7 +49,7 @@ extension XCTestCase {
 	public func testFixture<T: Decodable>(
 		bundle: Bundle,
 		jsonName: String,
-		jsonDecoder: JSONDecoder = .iso8601,
+		jsonDecoder: JSONDecoder = .init(),
 		file: StaticString = #filePath,
 		line: UInt = #line,
 		testFunction: (T) throws -> Void

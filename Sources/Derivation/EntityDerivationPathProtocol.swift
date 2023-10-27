@@ -19,39 +19,39 @@ extension HD.Path.Component.Child {
 }
 
 extension HD.Path.Full {
-	/// Special purpose derivation path component uesd by factor sources as identifier,
-	/// according to [CAP-26][cap26], the format is:
-	///
-	///     `m/44'/1022'/365'`
-	///
-	/// Where `'` denotes hardened path, which is **required** as per [SLIP-10][slip10],
-	/// where `365` is ASCII sum of `"GETID"`, i.e. `"GETID".map{ $0.asciiValue! }.reduce(0, +)`
-	///
-	/// [cap26]: https://radixdlt.atlassian.net/l/cp/UNaBAGUC
-	/// [slip10]: https://github.com/satoshilabs/slips/blob/master/slip-0010.md
-	///
-	public static let getID = try! Self(
-		children: [
-			.bip44Purpose,
-			.coinType,
-			.getID,
-		],
-		onlyPublic: false
-	)
-
-	public static func identity(
-		networkID: NetworkID,
-		index: HD.Path.Component.Child.Value,
-		keyKind: KeyKind
-	) throws -> Self {
-		try .defaultForEntity(
-			networkID: networkID,
-			entityKind: .identity,
-			index: index,
-			keyKind: keyKind
-		)
-	}
-
+//	/// Special purpose derivation path component uesd by factor sources as identifier,
+//	/// according to [CAP-26][cap26], the format is:
+//	///
+//	///     `m/44'/1022'/365'`
+//	///
+//	/// Where `'` denotes hardened path, which is **required** as per [SLIP-10][slip10],
+//	/// where `365` is ASCII sum of `"GETID"`, i.e. `"GETID".map{ $0.asciiValue! }.reduce(0, +)`
+//	///
+//	/// [cap26]: https://radixdlt.atlassian.net/l/cp/UNaBAGUC
+//	/// [slip10]: https://github.com/satoshilabs/slips/blob/master/slip-0010.md
+//	///
+//	public static let getID = try! Self(
+//		children: [
+//			.bip44Purpose,
+//			.coinType,
+//			.getID,
+//		],
+//		onlyPublic: false
+//	)
+//
+//	public static func identity(
+//		networkID: NetworkID,
+//		index: HD.Path.Component.Child.Value,
+//		keyKind: KeyKind
+//	) throws -> Self {
+//		try .defaultForEntity(
+//			networkID: networkID,
+//			entityKind: .identity,
+//			index: index,
+//			keyKind: keyKind
+//		)
+//	}
+//
 	public static func account(
 		networkID: NetworkID,
 		index: HD.Path.Component.Child.Value,
@@ -76,10 +76,22 @@ extension HD.Path.Full {
 			children: [
 				.bip44Purpose,
 				.coinType,
-				.init(nonHardenedValue: networkID.derivationPathComponentNonHardenedValue, isHardened: isHardened),
-				.init(nonHardenedValue: entityKind.derivationPathComponentNonHardenedValue, isHardened: isHardened),
-				.init(nonHardenedValue: keyKind.derivationPathComponentNonHardenedValue, isHardened: isHardened),
-				.init(nonHardenedValue: index, isHardened: isHardened),
+				.init(
+					nonHardenedValue: .init(networkID.rawValue),
+					isHardened: isHardened
+				),
+				.init(
+					nonHardenedValue: entityKind.derivationPathComponentNonHardenedValue,
+					isHardened: isHardened
+				),
+				.init(
+					nonHardenedValue: keyKind.derivationPathComponentNonHardenedValue,
+					isHardened: isHardened
+				),
+				.init(
+					nonHardenedValue: index,
+					isHardened: isHardened
+				),
 			],
 			onlyPublic: false
 		)
@@ -88,7 +100,6 @@ extension HD.Path.Full {
 
 // MARK: - EntityDerivationPathProtocol
 public protocol EntityDerivationPathProtocol: DerivationPathSchemeProtocol {
-	associatedtype Entity: EntityProtocol
 	var fullPath: HD.Path.Full { get }
 	init(
 		networkID: NetworkID,
@@ -110,7 +121,6 @@ extension EntityDerivationPathProtocol {
 
 	public var derivationPath: String { fullPath.toString() }
 	public static var derivationScheme: DerivationScheme { .slip10 }
-	public static var purpose: DerivationPurpose { .publicKeyForAddressOfEntity(type: Entity.self) }
 
 	public var networkID: NetworkID {
 		guard let networkID = NetworkID(exactly: self[.networkIndex]) else {
@@ -201,52 +211,52 @@ extension EntityDerivationPathProtocol {
 		EntityDerivationPathComponentIndex.allCases.count + 1
 	}
 
-	@discardableResult
-	static func validate(hdPath: HD.Path.Full) throws -> HD.Path.Full {
-		let components = hdPath.components
-		guard components.count == expectedComponentCount else {
-			throw InvalidDerivationPathForEntity.invalidComponentCount(got: components.count, expected: expectedComponentCount)
-		}
-
-		guard components.first!.isRoot else {
-			throw InvalidDerivationPathForEntity.invalidFirstComponentNotRoot
-		}
-		let children = hdPath.children
-		guard children.count == (expectedComponentCount - 1) else {
-			throw InvalidDerivationPathForEntity.multipleRootsFound
-		}
-
-		let nonHardenedComponent = children.first(where: { !$0.isHardened })
-		if let nonHardenedComponent {
-			throw InvalidDerivationPathForEntity.foundNonHardenedComponent(atDepth: nonHardenedComponent.depth.asExplicit)
-		}
-		assert(children.allSatisfy(\.isHardened))
-
-		guard hdPath[.purposeIndex] == .bip44Purpose else {
-			throw InvalidDerivationPathForEntity.secondComponentIsNotBIP44
-		}
-		guard hdPath[.coinTypeIndex] == .coinType else {
-			throw InvalidDerivationPathForEntity.invalidCoinType(got: children[EntityDerivationPathComponentIndex.coinTypeIndex.rawValue].nonHardenedValue)
-		}
-
-		guard hdPath[.networkIndex] <= UInt8.max else {
-			throw InvalidDerivationPathForEntity.invalidNetworkIDValueTooLarge
-		}
-
-		guard hdPath[.entityKindIndex] == Entity.entityKind.derivationPathComponentNonHardenedValue else {
-			throw InvalidDerivationPathForEntity.invalidEntityType(got: children[EntityDerivationPathComponentIndex.entityKindIndex.rawValue].nonHardenedValue)
-		}
-
-		let validKeyTypeValues = KeyKind.allCases.map(\.rawValue)
-		guard validKeyTypeValues.contains(hdPath[.keyKindIndex]) else {
-			throw InvalidDerivationPathForEntity.invalidKeyType(got: children[EntityDerivationPathComponentIndex.keyKindIndex.rawValue].nonHardenedValue, expectedAnyOf: validKeyTypeValues)
-		}
-
-		// no validation for entity index... index.
-
-		// Valid!
-		return hdPath
-	}
+//	@discardableResult
+//	static func validate(hdPath: HD.Path.Full) throws -> HD.Path.Full {
+//		let components = hdPath.components
+//		guard components.count == expectedComponentCount else {
+//			throw InvalidDerivationPathForEntity.invalidComponentCount(got: components.count, expected: expectedComponentCount)
+//		}
+//
+//		guard components.first!.isRoot else {
+//			throw InvalidDerivationPathForEntity.invalidFirstComponentNotRoot
+//		}
+//		let children = hdPath.children
+//		guard children.count == (expectedComponentCount - 1) else {
+//			throw InvalidDerivationPathForEntity.multipleRootsFound
+//		}
+//
+//		let nonHardenedComponent = children.first(where: { !$0.isHardened })
+//		if let nonHardenedComponent {
+//			throw InvalidDerivationPathForEntity.foundNonHardenedComponent(atDepth: nonHardenedComponent.depth.asExplicit)
+//		}
+//		assert(children.allSatisfy(\.isHardened))
+//
+//		guard hdPath[.purposeIndex] == .bip44Purpose else {
+//			throw InvalidDerivationPathForEntity.secondComponentIsNotBIP44
+//		}
+//		guard hdPath[.coinTypeIndex] == .coinType else {
+//			throw InvalidDerivationPathForEntity.invalidCoinType(got: children[EntityDerivationPathComponentIndex.coinTypeIndex.rawValue].nonHardenedValue)
+//		}
+//
+//		guard hdPath[.networkIndex] <= UInt8.max else {
+//			throw InvalidDerivationPathForEntity.invalidNetworkIDValueTooLarge
+//		}
+//
+//		guard hdPath[.entityKindIndex] == Entity.entityKind.derivationPathComponentNonHardenedValue else {
+//			throw InvalidDerivationPathForEntity.invalidEntityType(got: children[EntityDerivationPathComponentIndex.entityKindIndex.rawValue].nonHardenedValue)
+//		}
+//
+//		let validKeyTypeValues = KeyKind.allCases.map(\.rawValue)
+//		guard validKeyTypeValues.contains(hdPath[.keyKindIndex]) else {
+//			throw InvalidDerivationPathForEntity.invalidKeyType(got: children[EntityDerivationPathComponentIndex.keyKindIndex.rawValue].nonHardenedValue, expectedAnyOf: validKeyTypeValues)
+//		}
+//
+//		// no validation for entity index... index.
+//
+//		// Valid!
+//		return hdPath
+//	}
 }
 
 // MARK: - InvalidDerivationPathForEntity
@@ -254,9 +264,7 @@ public enum InvalidDerivationPathForEntity:
 	Swift.Error,
 	Sendable,
 	Hashable,
-	Codable,
-	CustomStringConvertible,
-	CustomDumpStringConvertible
+	Codable
 {
 	case invalidComponentCount(got: Int, expected: Int)
 	case invalidFirstComponentNotRoot
@@ -267,34 +275,4 @@ public enum InvalidDerivationPathForEntity:
 	case invalidCoinType(got: HD.Path.Component.Child.Value)
 	case invalidEntityType(got: HD.Path.Component.Child.Value)
 	case invalidKeyType(got: HD.Path.Component.Child.Value, expectedAnyOf: [HD.Path.Component.Child.Value])
-}
-
-extension InvalidDerivationPathForEntity {
-	public var customDumpDescription: String {
-		switch self {
-		case let .invalidComponentCount(expected, unexpected): "InvalidDerivationPathForEntity.invalidComponentCount(expected: \(expected), butGot: \(unexpected))"
-		case .invalidFirstComponentNotRoot: "InvalidDerivationPathForEntity.invalidFirstComponentNotRoot"
-		case let .foundNonHardenedComponent(maybeDepth): "InvalidDerivationPathForEntity.foundNonHardenedComponent(atDepth: \(String(describing: maybeDepth))"
-		case .multipleRootsFound: "InvalidDerivationPathForEntity.multipleRootsFound"
-		case .secondComponentIsNotBIP44: "InvalidDerivationPathForEntity.secondComponentIsNotBIP44"
-		case .invalidNetworkIDValueTooLarge: "InvalidDerivationPathForEntity.invalidNetworkIDValueTooLarge"
-		case let .invalidCoinType(unexpected): "InvalidDerivationPathForEntity.invalidCoinType(\(unexpected))"
-		case let .invalidEntityType(unexpected): "InvalidDerivationPathForEntity.invalidEntityType(\(unexpected))"
-		case let .invalidKeyType(expected, unexpected): "InvalidDerivationPathForEntity.invalidKeyType(expectedAnyOf: \(expected), butGot: \(unexpected))"
-		}
-	}
-
-	public var description: String {
-		switch self {
-		case let .invalidComponentCount(expected, unexpected): "InvalidDerivationPathForEntity.invalidComponentCount(expected: \(expected), butGot: \(unexpected))"
-		case .invalidFirstComponentNotRoot: "InvalidDerivationPathForEntity.invalidFirstComponentNotRoot"
-		case let .foundNonHardenedComponent(maybeDepth): "InvalidDerivationPathForEntity.foundNonHardenedComponent(atDepth: \(String(describing: maybeDepth))"
-		case .multipleRootsFound: "InvalidDerivationPathForEntity.multipleRootsFound"
-		case .secondComponentIsNotBIP44: "InvalidDerivationPathForEntity.secondComponentIsNotBIP44"
-		case .invalidNetworkIDValueTooLarge: "InvalidDerivationPathForEntity.invalidNetworkIDValueTooLarge"
-		case let .invalidCoinType(unexpected): "InvalidDerivationPathForEntity.invalidCoinType(\(unexpected))"
-		case let .invalidEntityType(unexpected): "InvalidDerivationPathForEntity.invalidEntityType(\(unexpected))"
-		case let .invalidKeyType(expected, unexpected): "InvalidDerivationPathForEntity.invalidKeyType(expectedAnyOf: \(expected), butGot: \(unexpected))"
-		}
-	}
 }

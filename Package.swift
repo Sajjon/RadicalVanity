@@ -14,7 +14,8 @@ let package = Package(
     ],
 	dependencies: [
 		.package(url: "https://github.com/pointfreeco/swift-nonempty", from: "0.4.0"),
-//		.package(url: "https://github.com/radixdlt/swift-engine-toolkit", from: "1.0.0-bbfaef1"),
+		.package(url: "https://github.com/pointfreeco/swift-tagged", from: "0.10.0"),
+		.package(url: "https://github.com/radixdlt/swift-engine-toolkit", from: "1.0.0-bbfaef1"),
 		.package(url: "https://github.com/apple/swift-collections", branch: "main"),
 		.package(url: "https://github.com/sajjon/k1", from: "0.3.9"),
 		.package(url: "https://github.com/attaswift/BigInt", from: "5.3.0"),
@@ -25,7 +26,6 @@ let package = Package(
             name: "Cryptography",
 			dependencies: [
 				.product(name: "NonEmpty", package: "swift-nonempty"),
-//				.product(name: "EngineToolkit", package: "swift-engine-toolkit"),
 				.product(name: "Collections", package: "swift-collections"),
 				.product(name: "BigInt", package: "BigInt"),
 				.product(name: "K1", package: "k1"),
@@ -37,7 +37,13 @@ let package = Package(
 			dependencies: ["Cryptography"],
 			resources: [.process("TestVectors/")]
 		),
-		.target(name: "Derivation", dependencies: ["Cryptography"]),
+		.target(
+			name: "Derivation",
+			dependencies: [
+				"Cryptography",
+				.product(name: "EngineToolkit", package: "swift-engine-toolkit"),
+				.product(name: "Tagged", package: "swift-tagged"),
+			]),
 		.testTarget(
 			name: "DerivationTests",
 			dependencies: ["Derivation"],

@@ -24,8 +24,8 @@ extension HD.Root {
 	}
 }
 
-extension HD.Root {
-	func publicKeyForFactorSourceID() throws -> SLIP10.PublicKey {
-		try derivePublicKey(path: .getID, curve: .curve25519)
-	}
-}
+//extension HD.Root {
+//	func publicKeyForFactorSourceID() throws -> SLIP10.PublicKey {
+//		try derivePublicKey(path: .getID, curve: .curve25519)
+//	}
+//}

@@ -25,10 +25,7 @@ public enum KeyKind:
 	CaseIterable,
 	Sendable,
 	Hashable,
-	Codable,
-	Identifiable,
-	CustomStringConvertible,
-	CustomDumpRepresentable
+	Codable
 {
 	/// For a key to be used for signing transactions.
 	/// The value is the ascii sum of `"TRANSACTION_SIGNING"`

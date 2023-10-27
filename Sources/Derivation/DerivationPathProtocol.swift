@@ -6,9 +6,7 @@ public enum DerivationScheme:
 	String,
 	Sendable,
 	Hashable,
-	Codable,
-	CustomStringConvertible,
-	CustomDumpRepresentable
+	Codable
 {
 	/// SLIP-10 derivation scheme as detail in https://github.com/satoshilabs/slips/blob/master/slip-0010.md
 	case slip10
@@ -48,7 +46,6 @@ public protocol DerivationPathSchemeProtocol: DerivationPathProtocol {
 // MARK: - DerivationPathPurposeProtocol
 /// A type which has a purpose to derive keys at the `derivationPath`.
 public protocol DerivationPathPurposeProtocol: DerivationPathProtocol {
-	static var purpose: DerivationPurpose { get }
 }
 
 extension DerivationPathProtocol where Self: Identifiable, ID == String {
@@ -62,8 +59,7 @@ public struct DerivationPath:
 	Sendable,
 	Hashable,
 	Codable,
-	CustomStringConvertible,
-	CustomDumpStringConvertible
+	CustomStringConvertible
 {
 	public let scheme: DerivationPathScheme
 	public let path: String
@@ -76,64 +72,64 @@ public struct DerivationPath:
 		self.path = path
 	}
 }
-
+//
 extension DerivationPath {
-	public static let getID: Self = try! .customPath(.init(path: .getID), scheme: .cap26)
-
+//	public static let getID: Self = try! .customPath(.init(path: .getID), scheme: .cap26)
+//
 	/// The **default** derivation path for `Account`s.
-	public static func accountPath(_ path: AccountDerivationPath) -> Self {
-		Self(scheme: .cap26, path: path.derivationPath)
+	public static func accountPath(_ path: AccountBabylonDerivationPath) -> Self {
+		Self(scheme: .cap26, path: path.fullPath.toString())
 	}
-
-	/// The **default** derivation path for `Identities`s (Personas).
-	public static func identityPath(_ path: IdentityHierarchicalDeterministicDerivationPath) -> Self {
-		Self(scheme: .cap26, path: path.derivationPath)
-	}
-
-	/// A **custom** derivation path use to derive some keys.
-	public static func customPath(_ path: CustomHierarchicalDeterministicDerivationPath, scheme: DerivationPathScheme) -> Self {
-		Self(scheme: scheme, path: path.derivationPath)
-	}
-
-	public static func forEntity(
-		kind entityKind: EntityKind,
-		networkID: Radix.Network.ID,
-		index: HD.Path.Component.Child.Value,
-		keyKind: KeyKind = .virtualEntity
-	) throws -> Self {
-		let path = try HD.Path.Full.defaultForEntity(
-			networkID: networkID,
-			entityKind: entityKind,
-			index: index,
-			keyKind: keyKind
-		)
-		return Self(scheme: .cap26, path: path.toString())
-	}
+//
+//	/// The **default** derivation path for `Identities`s (Personas).
+//	public static func identityPath(_ path: IdentityHierarchicalDeterministicDerivationPath) -> Self {
+//		Self(scheme: .cap26, path: path.derivationPath)
+//	}
+//
+//	/// A **custom** derivation path use to derive some keys.
+//	public static func customPath(_ path: CustomHierarchicalDeterministicDerivationPath, scheme: DerivationPathScheme) -> Self {
+//		Self(scheme: scheme, path: path.derivationPath)
+//	}
+//
+//	public static func forEntity(
+//		kind entityKind: EntityKind,
+//		networkID: Radix.Network.ID,
+//		index: HD.Path.Component.Child.Value,
+//		keyKind: KeyKind = .virtualEntity
+//	) throws -> Self {
+//		let path = try HD.Path.Full.defaultForEntity(
+//			networkID: networkID,
+//			entityKind: entityKind,
+//			index: index,
+//			keyKind: keyKind
+//		)
+//		return Self(scheme: .cap26, path: path.toString())
+//	}
 }
 
-extension DerivationPath {
-	// FIXME: Multifactor remove
-	@available(*, deprecated, message: "Use 'path' instead")
-	public var derivationPath: String {
-		path
-	}
-
-	public func asIdentityPath() throws -> IdentityHierarchicalDeterministicDerivationPath {
-		try IdentityHierarchicalDeterministicDerivationPath(derivationPath: path)
-	}
-
-	public func asAccountPath() throws -> AccountDerivationPath {
-		try AccountDerivationPath(derivationPath: path)
-	}
-
-	public func asCustomPath() throws -> CustomHierarchicalDeterministicDerivationPath {
-		try CustomHierarchicalDeterministicDerivationPath(derivationPath: path)
-	}
-
-	public func asLegacyOlympiaBIP44LikePath() throws -> LegacyOlympiaBIP44LikeDerivationPath {
-		try LegacyOlympiaBIP44LikeDerivationPath(derivationPath: path)
-	}
-}
+//extension DerivationPath {
+//	// FIXME: Multifactor remove
+//	@available(*, deprecated, message: "Use 'path' instead")
+//	public var derivationPath: String {
+//		path
+//	}
+//
+//	public func asIdentityPath() throws -> IdentityHierarchicalDeterministicDerivationPath {
+//		try IdentityHierarchicalDeterministicDerivationPath(derivationPath: path)
+//	}
+//
+//	public func asAccountPath() throws -> AccountDerivationPath {
+//		try AccountDerivationPath(derivationPath: path)
+//	}
+//
+//	public func asCustomPath() throws -> CustomHierarchicalDeterministicDerivationPath {
+//		try CustomHierarchicalDeterministicDerivationPath(derivationPath: path)
+//	}
+//
+//	public func asLegacyOlympiaBIP44LikePath() throws -> LegacyOlympiaBIP44LikeDerivationPath {
+//		try LegacyOlympiaBIP44LikeDerivationPath(derivationPath: path)
+//	}
+//}
 
 extension DerivationPath {
 	public func hdFullPath() throws -> HD.Path.Full {
@@ -154,9 +150,3 @@ extension DerivationPath {
 		path
 	}
 }
-
-#if DEBUG
-extension DerivationPath {
-	public static let previewValueAccount = try! Self.accountPath(.babylon(.init(networkID: .nebunet, index: 0, keyKind: .transactionSigning)))
-}
-#endif // DEBUG
