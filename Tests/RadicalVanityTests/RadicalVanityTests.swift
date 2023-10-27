@@ -2,7 +2,11 @@ import XCTest
 @testable import RadicalVanity
 
 final class RadicalVanityTests: XCTestCase {
-	func testTrivial() throws {
-		XCTAssertEqual(1, 1)
+	
+	func test_find_invalid_char_throws() {
+		XCTAssertThrowsError(
+			try findMnemonicFor(suffix: "bo")
+		)
 	}
+	
 }
