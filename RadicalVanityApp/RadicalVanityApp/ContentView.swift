@@ -22,7 +22,7 @@ public final class Model {
 extension Model {
 	
 	public var searchHasRunLongTime: Bool {
-		secondsElapsed >= 60 * 5 /* 5min */
+		secondsElapsed >= 7
 	}
 	
 	public func start(force: Bool = false) {
@@ -40,8 +40,8 @@ extension Model {
 		}
 	}
 	
-	public func stop() {
-		guard !warnLongRunSearchInProgressIfNeeded() else {
+	public func stop(force: Bool = true) {
+		if !force && warnLongRunSearchInProgressIfNeeded() {
 			return
 		}
 		task?.cancel()
@@ -86,24 +86,24 @@ struct ContentView: View {
 			}
 			.disabled(!model.canSearch)
 			Button("Stop") {
-				model.stop()
+				model.stop(force: false)
 			}
 			.disabled(!model.canStop)
         }
 		.confirmationDialog(
-			"Apa",
+			"Cancel current search?",
 			isPresented: $model.isShowingSearchHasRunLongTimeWarning,
 			actions: {
 				VStack {
-					Button("Replace current search") {
-						model.replaceCurrentSearch()
+					Button("Stop current seach") {
+						model.stop(force: true)
 					}
 					Button("Wait for current search to finish") {
 						model.dismissSearchHasRunLongTimeWarning()
 					}
 				}
 			},
-			message: { Text("Hej") }
+			message: { Text("You have been running the current search for \(model.secondsElapsed / 60) minutes, are you sure you wanna stop it?") }
 		)
         .padding()
     }
