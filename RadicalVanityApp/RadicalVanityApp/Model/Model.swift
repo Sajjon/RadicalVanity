@@ -5,6 +5,7 @@
 //  Created by Alexander Cyon on 2023-10-28.
 //
 
+import AVFoundation
 import SwiftUI
 import RadicalVanity
 import IdentifiedCollections
@@ -16,6 +17,7 @@ public final class Model {
 	public var error: String?
 	public var duration: Duration = .zero
 	var searchTask: SearchTask?
+	public var deterministic = false
 	public var isShowingSearchHasRunLongTimeWarning = false
 	public var isShowingAreYouSureWannaClearResultsWarning = false
 	public init() {}
@@ -34,6 +36,7 @@ public final class SearchTask {
 	}
 	init(
 		target: String,
+		deterministic: Bool,
 		onTick: @escaping @Sendable (Duration) -> Void,
 		onResult: @escaping @Sendable (Vanity) -> Void
 	) {
@@ -54,7 +57,7 @@ public final class SearchTask {
 						try Task.checkCancellation()
 						let result = try findMnemonicFor(
 							suffix: suffix,
-							deterministic: true // helps with optimization
+							deterministic: deterministic
 						)
 						onResult(result)
 					}
@@ -89,9 +92,16 @@ extension Model {
 		}
 		self.duration = .zero
 		self.searchTask?.cancel()
-		self.searchTask = SearchTask(target: target) {
+		let playSound = target.count >= 4
+		self.searchTask = SearchTask(
+			target: target,
+			deterministic: deterministic
+		) {
 			self.duration = $0
 		} onResult: {
+			if playSound {
+				AudioServicesPlaySystemSound(1026)
+			}
 			self.results.append(.init(result: $0))
 		}
 	}

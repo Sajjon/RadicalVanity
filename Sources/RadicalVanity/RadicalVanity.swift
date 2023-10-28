@@ -1,5 +1,10 @@
 @_exported import Derivation
 
+public struct AccountsAtLowerIndex: Sendable, Hashable {
+	public let index: UInt32
+	public let address: String
+}
+
 public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 	public let mnemonic: Mnemonic
 	public let address: String
@@ -9,6 +14,7 @@ public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 		public let derivationPath: String
 		public let privateKey: Curve25519.PrivateKey
 		public let elapsedTime: TimeInterval
+		public let accountsAtLowerIndex: [AccountsAtLowerIndex]
 	}
 	public struct Input: Sendable, Hashable {
 		public let targetSuffix: String
@@ -69,7 +75,7 @@ public func validate(suffix targetSuffix: String) throws {
 public func findMnemonicFor(
 	suffix targetSuffix: String,
 	deterministic: Bool = false,
-	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 3,
+	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 20,
 	attempts maxAttempts: AttemptCount = 1_000_000
 ) throws -> Vanity {
 	var attempt: AttemptCount = 0
@@ -91,9 +97,9 @@ public func findMnemonicFor(
 			attempt += 1
 			rawSeed += 1
 		}
-		if attempt.isMultiple(of: 100_000) {
-			print("⏳ \(attempt) Mnemonics tried")
-		}
+//		if attempt.isMultiple(of: 100_000) {
+//			print("⏳ \(attempt) Mnemonics tried")
+//		}
 		if attempt >= maxAttempts {
 			throw Error.noResultAfter(attempts: maxAttempts)
 		}
@@ -103,7 +109,7 @@ public func findMnemonicFor(
 		)
 		hdRoot = try mnemonic.hdRoot()
 		let network: NetworkID = .mainnet
-		var previousAccounts: [(index: UInt32, address: String)] = []
+		var accountsAtLowerIndex: [AccountsAtLowerIndex] = []
 		for index in 0..<maxDerivationIndexPerMnemonicAttempt {
 			let derivationPath = try AccountBabylonDerivationPath(
 				networkID: network,
@@ -121,14 +127,14 @@ public func findMnemonicFor(
 				let timeEnd = DispatchTime.now()
 				let nanoTime = timeEnd.uptimeNanoseconds - timeStart.uptimeNanoseconds // << Difference in nano seconds (UInt64)
 				let elapsedTime = TimeInterval(nanoTime) / 1_000_000_000 // Technically could overflow for long running tests
-				print("🔮 found, previous: \(previousAccounts)")
 				return Vanity(
 					mnemonic: mnemonic,
 					address: address,
 					details: .init(
 						derivationPath: derivationPath.fullPath.toString(),
 						privateKey: privateKey.privateKey!,
-						elapsedTime: elapsedTime
+						elapsedTime: elapsedTime,
+						accountsAtLowerIndex: accountsAtLowerIndex
 					),
 					input: .init(
 						targetSuffix: targetSuffix,
@@ -138,7 +144,12 @@ public func findMnemonicFor(
 					)
 				)
 			} else {
-				previousAccounts.append((index: index, address: address))
+				accountsAtLowerIndex.append(
+					AccountsAtLowerIndex(
+						index: index,
+						address: address
+					)
+				)
 			}
 		}
 	}

@@ -5,6 +5,8 @@
 //  Created by Alexander Cyon on 2023-10-28.
 //
 
+
+
 import SwiftUI
 import RadicalVanity
 
@@ -61,19 +63,78 @@ struct ResultView: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 20) {
 			labelled("Target", \.targetSuffix, vertical: false)
-			labelled("Address", \.address)
+			AddressView(address: summary.address)
 			VStack {
 				labelled("Mnemonic", \.mnemonic)
 				Button("Copy") {
-					UIPasteboard.general.string = summary.mnemonic
+					copyToPasteboard(summary.mnemonic)
 					markSeen(result.id)
 				}
 			}
 			labelled("Derivation Path", \.derivationPath)
+			if !result.result.details.accountsAtLowerIndex.isEmpty {
+				VStack(alignment: .leading) {
+					Text("Accounts at lower index")
+						.font(.caption2)
+					ForEach(self.result.result.details.accountsAtLowerIndex, id: \.self) { acc in
+						VStack(alignment: .leading) {
+							Labelled("index", acc.index)
+							AddressView(address: acc.address)
+						}
+						.font(.footnote)
+					}
+				}
+			}
 		}
 		.padding()
 		.border(Color.blue, width: 2)
 		.background(isNew ? .green : .white)
 		.padding()
 	}
+}
+
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+public func copyToPasteboard(_ contents: String) {
+	#if os(iOS)
+	UIPasteboard.general.string = contents
+	#elseif os(macOS)
+	NSPasteboard.general.clearContents()
+	NSPasteboard.general.declareTypes([.string], owner: nil)
+	NSPasteboard.general.setString(contents, forType: .string)
+	#endif
+}
+
+struct AddressView: View {
+	let address: String
+	var condAddr: String {
+		if isShowingFull {
+			address
+		} else {
+			"acco...\(String(address.suffix(6)))"
+		}
+	}
+	@State var isShowingFull = false
+	var body: some View {
+		Text("`\(condAddr)`")
+			.contextMenu {
+				if isShowingFull {
+					Button("Hide full") {
+						isShowingFull = false
+					}
+				} else {
+					Button("View full") {
+						isShowingFull = true
+					}
+				}
+				Button("Copy") {
+					copyToPasteboard(address)
+				}
+				
+			}
+	}
+
 }

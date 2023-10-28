@@ -21,8 +21,14 @@ struct SearchTab: View {
 				Text("Error: \(error)")
 			}
 			
+			Toggle(isOn: $model.deterministic, label: {
+				Text("Deterministic")
+			})
+			
 			TextField("Target", text: $model.target)
+			#if os(iOS)
 				.textInputAutocapitalization(.never)
+			#endif
 				.textCase(.lowercase)
 			
 			Button("Find") {
