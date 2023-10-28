@@ -36,8 +36,8 @@ struct SearchTab: View {
 		}
 		.padding()
 		.tabItem {
-			if model.canStop {
-				Label("Searching...", systemImage: "hourglass.and.lock")
+			if let currentTarget = model.searchTask?.target {
+				Label("\"\(currentTarget)\"", systemImage: "hourglass.and.lock")
 			} else {
 				Label("Search", systemImage: "plus.magnifyingglass")
 			}

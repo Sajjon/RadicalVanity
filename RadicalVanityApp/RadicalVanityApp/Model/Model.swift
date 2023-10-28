@@ -15,24 +15,50 @@ public final class Model {
 	public var target = "xrd"
 	public var error: String?
 	public var duration: Duration = .zero
-	private var task: Task<Void, Error>?
+	var searchTask: SearchTask?
 	public var isShowingSearchHasRunLongTimeWarning = false
 	public var isShowingAreYouSureWannaClearResultsWarning = false
 	public init() {}
 }
 
-public struct SearchResult: Hashable, Identifiable {
-	public var isNew: Bool
-	public var id: String { result.address }
-	public let result: Vanity
-	init(isNew: Bool = true, result: Vanity) {
-		self.isNew = isNew
-		self.result = result
+@Observable
+public final class SearchTask {
+	private var task: Task<Void, Error>?
+	public let target: String
+	
+	func cancel() {
+		task?.cancel()
 	}
-	mutating func seen() {
-		isNew = false
+	init(
+		target: String,
+		onTick: @escaping @Sendable (Duration) -> Void,
+		onResult: @escaping @Sendable (Vanity) -> Void
+	) {
+		self.target = target
+		self.task = Task {
+			let start = ContinuousClock.now
+			let suffix = target
+			await withThrowingTaskGroup(of: Void.self, returning: Void.self) { group in
+				_ = group.addTaskUnlessCancelled(priority: .high) {
+					while true {
+						try Task.checkCancellation()
+						try await Task.sleep(for: .seconds(1))
+						onTick(start.duration(to: .now))
+					}
+				}
+				_ = group.addTaskUnlessCancelled(priority: .high) {
+					while true {
+						try Task.checkCancellation()
+						let result = try findMnemonicFor(suffix: suffix)
+						onResult(result)
+					}
+				}
+			}
+			
+		}
 	}
 }
+
 
 // MARK: Public
 extension Model {
@@ -49,28 +75,11 @@ extension Model {
 		if !force && warnLongRunSearchInProgressIfNeeded() {
 			return
 		}
-		self.duration = .zero
-		self.task?.cancel()
-		self.task = Task {
-			let start = ContinuousClock.now
-			let suffix = target
-			await withThrowingTaskGroup(of: Void.self, returning: Void.self) { group in
-				_ = group.addTaskUnlessCancelled(priority: .high) {
-					while true {
-						try Task.checkCancellation()
-						try await Task.sleep(for: .seconds(1))
-						self.duration = start.duration(to: .now)
-					}
-				}
-				_ = group.addTaskUnlessCancelled(priority: .high) {
-					while true {
-						try Task.checkCancellation()
-						let result = try findMnemonicFor(suffix: suffix)
-						self.results.append(.init(result: result))
-					}
-				}
-			}
-			
+		self.searchTask?.cancel()
+		self.searchTask = SearchTask(target: target) {
+			self.duration = $0
+		} onResult: {
+			self.results.append(.init(result: $0))
 		}
 	}
 	
@@ -78,8 +87,8 @@ extension Model {
 		if !force && warnLongRunSearchInProgressIfNeeded() {
 			return
 		}
-		task?.cancel()
-		task = nil
+		searchTask?.cancel()
+		searchTask = nil
 	}
 	
 	/// Returns `true` if a long running task is running
@@ -110,7 +119,7 @@ extension Model {
 		}
 	}
 	public var canStop: Bool {
-		task != nil
+		searchTask != nil
 	}
 	
 	public func clearResults() {
