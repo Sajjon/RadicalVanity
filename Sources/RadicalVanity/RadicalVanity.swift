@@ -1,4 +1,4 @@
-import Derivation
+@_exported import Derivation
 
 public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 	public let mnemonic: Mnemonic
@@ -56,6 +56,15 @@ enum Error: Swift.Error {
 	case noResultAfter(attempts: AttemptCount)
 }
 
+public func validate(suffix targetSuffix: String) throws {
+	let invalidCharacterSet = Set(targetSuffix).subtracting(bech32Alphabet)
+	
+	if let invalidCharacter = invalidCharacterSet.first {
+		throw Error.invalidLetter(invalidCharacter)
+	}
+	// all good
+}
+
 /// Attempts to find a mnemonic for an address ending with `suffix`
 public func findMnemonicFor(
 	suffix targetSuffix: String,
@@ -63,12 +72,7 @@ public func findMnemonicFor(
 	attempts maxAttempts: AttemptCount = 1_000_000
 ) throws -> Vanity {
 	var attempt: AttemptCount = 0
-	let invalidCharacterSet = Set(targetSuffix).subtracting(bech32Alphabet)
-	
-	if let invalidCharacter = invalidCharacterSet.first {
-		throw Error.invalidLetter(invalidCharacter)
-	}
-	
+	try validate(suffix: targetSuffix)
 	var mnemonic: Mnemonic!
 	var hdRoot: HD.Root!
 	let timeStart = DispatchTime.now()

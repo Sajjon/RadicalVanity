@@ -450,6 +450,9 @@
          <FileRef
             location = "group:ContentView.swift">
          </FileRef>
+         <FileRef
+            location = "group:Extensions.swift">
+         </FileRef>
       </Group>
    </Group>
 </Workspace>
