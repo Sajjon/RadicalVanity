@@ -68,6 +68,7 @@ public func validate(suffix targetSuffix: String) throws {
 /// Attempts to find a mnemonic for an address ending with `suffix`
 public func findMnemonicFor(
 	suffix targetSuffix: String,
+	deterministic: Bool = false,
 	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 3,
 	attempts maxAttempts: AttemptCount = 1_000_000
 ) throws -> Vanity {
@@ -76,8 +77,15 @@ public func findMnemonicFor(
 	var mnemonic: Mnemonic!
 	var hdRoot: HD.Root!
 	let timeStart = DispatchTime.now()
-	let rawSeedData = try SecureBytesGenerator.generate(byteCount: 16)
-	var rawSeed = BigUInt(rawSeedData.hex, radix: 16)!
+	
+	var rawSeed: BigUInt = try {
+		if deterministic {
+			return 0
+		} else {
+			return try BigUInt(SecureBytesGenerator.generate(byteCount: 31).hex, radix: 16)!
+		}
+	}()
+	
 	while attempt < maxAttempts {
 		defer {
 			attempt += 1
@@ -141,8 +149,10 @@ public func findMnemonicFor(
 extension BigUInt {
 	func data(pad: UInt8 = 0x00, byteCount toLength: Int) -> Data {
 		var serialized = serialize()
-		if serialized.count >= toLength {
+		if serialized.count == toLength {
 			return serialized
+		} else if serialized.count > toLength {
+			return Data(serialized.prefix(32))
 		}
 		let bytesToPad = toLength - serialized.count
 		let bytes: [UInt8] = .init(repeating: pad, count: bytesToPad)

@@ -12,7 +12,7 @@ import IdentifiedCollections
 @Observable
 public final class Model {
 	public var results: IdentifiedArrayOf<SearchResult> = []
-	public var target = "xrd"
+	public var target = "eee" // 15 sec ATM
 	public var error: String?
 	public var duration: Duration = .zero
 	var searchTask: SearchTask?
@@ -27,6 +27,9 @@ public final class SearchTask {
 	public let target: String
 	
 	func cancel() {
+		task?.cancel()
+	}
+	deinit {
 		task?.cancel()
 	}
 	init(
@@ -49,10 +52,14 @@ public final class SearchTask {
 				_ = group.addTaskUnlessCancelled(priority: .high) {
 					while true {
 						try Task.checkCancellation()
-						let result = try findMnemonicFor(suffix: suffix)
+						let result = try findMnemonicFor(
+							suffix: suffix,
+							deterministic: true // helps with optimization
+						)
 						onResult(result)
 					}
 				}
+				
 			}
 			
 		}
@@ -67,6 +74,11 @@ extension Model {
 		results.filter(\.isNew)
 	}
 	
+	public var resultsForCurrentTarget: IdentifiedArrayOf<SearchResult> {
+		guard let searchTask else { return [] }
+		return results.filter { $0.result.input.targetSuffix == searchTask.target }
+	}
+	
 	public var searchHasRunLongTime: Bool {
 		duration >= .minutes(20)
 	}
@@ -75,6 +87,7 @@ extension Model {
 		if !force && warnLongRunSearchInProgressIfNeeded() {
 			return
 		}
+		self.duration = .zero
 		self.searchTask?.cancel()
 		self.searchTask = SearchTask(target: target) {
 			self.duration = $0

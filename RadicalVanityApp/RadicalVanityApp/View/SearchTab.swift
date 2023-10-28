@@ -12,8 +12,8 @@ struct SearchTab: View {
 	@Bindable var model: Model
 	var body: some View {
 		VStack {
-			if model.canStop {
-				Text("Searching for: '\(model.target)'")
+			if let searchTask = model.searchTask {
+				Text("Searching for: '\(searchTask.target)' #\(model.resultsForCurrentTarget.count) hits")
 				ProgressView("Elapsed: \(model.duration.formatted())")
 			}
 			
@@ -22,6 +22,7 @@ struct SearchTab: View {
 			}
 			
 			TextField("Target", text: $model.target)
+				.textInputAutocapitalization(.never)
 				.textCase(.lowercase)
 			
 			Button("Find") {
