@@ -1,16 +1,16 @@
 import Derivation
 
-public struct Vanity: Hashable, CustomStringConvertible {
+public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 	public let mnemonic: Mnemonic
 	public let address: String
 	public let details: Details
 	public let input: Input
-	public struct Details: Hashable {
+	public struct Details: Sendable, Hashable {
 		public let derivationPath: String
 		public let privateKey: Curve25519.PrivateKey
 		public let elapsedTime: TimeInterval
 	}
-	public struct Input: Hashable {
+	public struct Input: Sendable, Hashable {
 		public let targetSuffix: String
 		public let attempt: AttemptCount
 		public let maxAttempts: AttemptCount
@@ -25,7 +25,7 @@ public struct Vanity: Hashable, CustomStringConvertible {
 			elapsedTime: details.elapsedTime
 		)
 	}
-	public struct Summary: Equatable, CustomStringConvertible {
+	public struct Summary: Sendable, Equatable, CustomStringConvertible {
 		public let address: String
 		public let targetSuffix: String
 		public let mnemonic: String
@@ -59,7 +59,7 @@ enum Error: Swift.Error {
 /// Attempts to find a mnemonic for an address ending with `suffix`
 public func findMnemonicFor(
 	suffix targetSuffix: String,
-	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 2,
+	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 3,
 	attempts maxAttempts: AttemptCount = 1_000_000
 ) throws -> Vanity {
 	var attempt: AttemptCount = 0
@@ -72,8 +72,13 @@ public func findMnemonicFor(
 	var mnemonic: Mnemonic!
 	var hdRoot: HD.Root!
 	let timeStart = DispatchTime.now()
+	let rawSeedData = try SecureBytesGenerator.generate(byteCount: 16)
+	var rawSeed = BigUInt(rawSeedData.hex, radix: 16)!
 	while attempt < maxAttempts {
-		defer { attempt += 1 }
+		defer {
+			attempt += 1
+			rawSeed += 1
+		}
 		if attempt.isMultiple(of: 100_000) {
 			print("⏳ \(attempt) Mnemonics tried")
 		}
@@ -81,11 +86,12 @@ public func findMnemonicFor(
 			throw Error.noResultAfter(attempts: maxAttempts)
 		}
 		mnemonic = try Mnemonic(
-			entropy: .init(data: attempt.data(byteCount: 32)),
+			entropy: .init(data: rawSeed.data(byteCount: 32)),
 			language: .english
 		)
 		hdRoot = try mnemonic.hdRoot()
 		let network: NetworkID = .mainnet
+		var previousAccounts: [(index: UInt32, address: String)] = []
 		for index in 0..<maxDerivationIndexPerMnemonicAttempt {
 			let derivationPath = try AccountBabylonDerivationPath(
 				networkID: network,
@@ -103,7 +109,7 @@ public func findMnemonicFor(
 				let timeEnd = DispatchTime.now()
 				let nanoTime = timeEnd.uptimeNanoseconds - timeStart.uptimeNanoseconds // << Difference in nano seconds (UInt64)
 				let elapsedTime = TimeInterval(nanoTime) / 1_000_000_000 // Technically could overflow for long running tests
-
+				print("🔮 found, previous: \(previousAccounts)")
 				return Vanity(
 					mnemonic: mnemonic,
 					address: address,
@@ -119,6 +125,8 @@ public func findMnemonicFor(
 						maxDerivationIndexPerMnemonicAttempt: maxDerivationIndexPerMnemonicAttempt
 					)
 				)
+			} else {
+				previousAccounts.append((index: index, address: address))
 			}
 		}
 	}

@@ -15,12 +15,24 @@ final class RadicalVanityTests: XCTestCase {
 		)
 	}
 	func test_xrd() throws {
+		// start at `0` (not random... duh).
 		let result = try findMnemonicFor(suffix: "xrd")
 		let summary = result.summary
 		XCTAssertEqual(summary.address, "account_rdx12x5yc244q2ex7aw06dcnlduw2re556h797afg89ksjy9vnkzms9xrd")
 		XCTAssertEqual(summary.mnemonic, "action job abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon body")
 	}
-	
+	func test_cy0n() throws {
+		let result = try findMnemonicFor(suffix: "cy0n")
+		print(result)
+	}
+	func test_alex() throws {
+		let result = try findMnemonicFor(suffix: "alex")
+		print(result)
+	}
+	func test_klara() throws {
+		let result = try findMnemonicFor(suffix: "klara")
+		print(result)
+	}
 }
 //func test_bits() {
 //	let size = 4

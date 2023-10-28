@@ -1,7 +1,7 @@
 import CryptoKit
 
 // MARK: - SecureBytesGenerator
-private enum SecureBytesGenerator {}
+public enum SecureBytesGenerator {}
 
 extension SecureBytesGenerator {
 	fileprivate enum Error: Swift.Error {
@@ -9,7 +9,7 @@ extension SecureBytesGenerator {
 	}
 
 	// https://developer.apple.com/documentation/security/1399291-secrandomcopybytes
-	fileprivate static func generate(byteCount count: Int) throws -> Data {
+	public static func generate(byteCount count: Int) throws -> Data {
 		var bytes = [UInt8](repeating: 0, count: count)
 		let status: OSStatus = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
 		guard status == errSecSuccess else {
