@@ -52,11 +52,11 @@ public struct SearchTask {
 				_ = group.addTaskUnlessCancelled(priority: .high) {
 					while true {
 						try Task.checkCancellation()
-						let result = try findMnemonicFor(
+						try await findMnemonicFor(
 							suffix: suffix,
-							deterministic: deterministic
+							deterministic: deterministic,
+							onResult: onResult
 						)
-						await onResult(result)
 					}
 				}
 				

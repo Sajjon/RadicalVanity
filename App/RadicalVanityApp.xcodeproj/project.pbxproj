@@ -11,7 +11,7 @@
 		4838C9E72AECFDA5008FCC17 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4838C9E62AECFDA5008FCC17 /* ContentView.swift */; };
 		4838C9E92AECFDA8008FCC17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4838C9E82AECFDA8008FCC17 /* Assets.xcassets */; };
 		4838C9ED2AECFDA8008FCC17 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4838C9EC2AECFDA8008FCC17 /* Preview Assets.xcassets */; };
-		4838C9F52AECFDFC008FCC17 /* RadicalVanity in Frameworks */ = {isa = PBXBuildFile; productRef = 4838C9F42AECFDFC008FCC17 /* RadicalVanity */; };
+		48D291472AEE3B920032F2FC /* RadicalVanity in Frameworks */ = {isa = PBXBuildFile; productRef = 48D291462AEE3B920032F2FC /* RadicalVanity */; };
 		48E3E81B2AED878900B02D64 /* IdentifiedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = 48E3E81A2AED878900B02D64 /* IdentifiedCollections */; };
 		48E3E81D2AED8B6B00B02D64 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E3E81C2AED8B6B00B02D64 /* Extensions.swift */; };
 		48E3E81F2AED8B9E00B02D64 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E3E81E2AED8B9E00B02D64 /* Model.swift */; };
@@ -41,7 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4838C9F52AECFDFC008FCC17 /* RadicalVanity in Frameworks */,
+				48D291472AEE3B920032F2FC /* RadicalVanity in Frameworks */,
 				48E3E81B2AED878900B02D64 /* IdentifiedCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -132,8 +132,8 @@
 			);
 			name = RadicalVanityApp;
 			packageProductDependencies = (
-				4838C9F42AECFDFC008FCC17 /* RadicalVanity */,
 				48E3E81A2AED878900B02D64 /* IdentifiedCollections */,
+				48D291462AEE3B920032F2FC /* RadicalVanity */,
 			);
 			productName = RadicalVanityApp;
 			productReference = 4838C9E12AECFDA5008FCC17 /* RadicalVanityApp.app */;
@@ -164,8 +164,8 @@
 			);
 			mainGroup = 4838C9D82AECFDA5008FCC17;
 			packageReferences = (
-				4838C9F32AECFDFC008FCC17 /* XCLocalSwiftPackageReference ".." */,
 				48E3E8192AED878900B02D64 /* XCRemoteSwiftPackageReference "swift-identified-collections" */,
+				48D291452AEE3B920032F2FC /* XCLocalSwiftPackageReference ".." */,
 			);
 			productRefGroup = 4838C9E22AECFDA5008FCC17 /* Products */;
 			projectDirPath = "";
@@ -428,7 +428,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		4838C9F32AECFDFC008FCC17 /* XCLocalSwiftPackageReference ".." */ = {
+		48D291452AEE3B920032F2FC /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ..;
 		};
@@ -446,7 +446,7 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4838C9F42AECFDFC008FCC17 /* RadicalVanity */ = {
+		48D291462AEE3B920032F2FC /* RadicalVanity */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RadicalVanity;
 		};

@@ -11,6 +11,7 @@ let package = Package(
         .library(
             name: "RadicalVanity",
             targets: ["RadicalVanity"]),
+		.executable(name: "RadicalVanityCLI", targets: ["RadicalVanityCLI"]),
     ],
 	dependencies: [
 		.package(url: "https://github.com/pointfreeco/swift-nonempty", from: "0.4.0"),
@@ -20,6 +21,7 @@ let package = Package(
 		.package(url: "https://github.com/sajjon/k1", from: "0.3.9"),
 		.package(url: "https://github.com/attaswift/BigInt", from: "5.3.0"),
 		.package(url: "https://github.com/apple/swift-algorithms", from: "1.1.0"),
+		.package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
 	],
     targets: [
         .target(
@@ -55,8 +57,16 @@ let package = Package(
 				"Derivation"
 			]
 		),
-        .testTarget(
-            name: "RadicalVanityTests",
-            dependencies: ["RadicalVanity"]),
+		.testTarget(
+			name: "RadicalVanityTests",
+			dependencies: ["RadicalVanity"]),
+		.executableTarget(
+			name: "RadicalVanityCLI",
+			dependencies: [
+				"RadicalVanity",
+				.product(name: "ArgumentParser", package: "swift-argument-parser"),
+			],
+			path: "Sources/CLI"
+		)
     ]
 )

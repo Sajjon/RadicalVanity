@@ -114,7 +114,7 @@ struct AddressView: View {
 		if isShowingFull {
 			address
 		} else {
-			"acco...\(String(address.suffix(6)))"
+			abbreviated(address: address)
 		}
 	}
 	@State var isShowingFull = false

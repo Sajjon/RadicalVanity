@@ -1,5 +1,16 @@
 @_exported import Derivation
 
+
+public func abbreviated(address: String) -> String {
+	[
+		address.prefix(4),
+		address.suffix(6),
+	]
+		.map(String.init)
+		.joined(separator: "...")
+}
+
+
 public struct AccountsAtLowerIndex: Sendable, Hashable {
 	public let index: UInt32
 	public let address: String
@@ -13,13 +24,10 @@ public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 	public struct Details: Sendable, Hashable {
 		public let derivationPath: String
 		public let privateKey: Curve25519.PrivateKey
-		public let elapsedTime: TimeInterval
 		public let accountsAtLowerIndex: [AccountsAtLowerIndex]
 	}
 	public struct Input: Sendable, Hashable {
 		public let targetSuffix: String
-		public let attempt: AttemptCount
-		public let maxAttempts: AttemptCount
 		public let maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value
 	}
 	public var summary: Summary {
@@ -28,7 +36,7 @@ public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 			targetSuffix: input.targetSuffix,
 			mnemonic: mnemonic.phrase.rawValue,
 			derivationPath: details.derivationPath,
-			elapsedTime: details.elapsedTime
+			accountsAtLowerIndex: details.accountsAtLowerIndex
 		)
 	}
 	public struct Summary: Sendable, Equatable, CustomStringConvertible {
@@ -36,15 +44,27 @@ public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 		public let targetSuffix: String
 		public let mnemonic: String
 		public let derivationPath: String
-		public let elapsedTime: TimeInterval
+		public let accountsAtLowerIndex: [AccountsAtLowerIndex]
+		
 		public var description: String {
- """
- ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
+			let count = 10
+			let lowerIndicesAddresses: String = {
+				guard !accountsAtLowerIndex.isEmpty else {
+					return ""
+				}
+				let separator = String(repeating: "🔮", count: count)
+				let mapped = accountsAtLowerIndex.map {
+					"\(abbreviated(address: $0.address)) @ \($0.index) 🔮"
+				}
+				return "\n\(separator)\n\(mapped.joined(separator: "\n"))"
+			}()
+			let separator = String(repeating: "✨", count: count)
+ return """
+ \n\n\(separator)
  Address: '\(address)' (🎯: '\(targetSuffix)')
  Mnemonic: '\(mnemonic)'
- DerivationPath: '\(derivationPath)'
- Time: \(elapsedTime)
- ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
+ DerivationPath: '\(derivationPath)'\(lowerIndicesAddresses)
+ \(separator)
  """
 		}
 	}
@@ -55,6 +75,7 @@ public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 
 public let bech32Alphabet = Set("023456789acdefghjklmnpqrstuvwxyz")
 
+extension BigUInt: @unchecked Sendable {}
 public typealias AttemptCount = BigUInt
 
 enum Error: Swift.Error {
@@ -77,13 +98,11 @@ public func findMnemonicFor(
 	suffix targetSuffix: String,
 	deterministic: Bool = false,
 	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 20,
-	attempts maxAttempts: AttemptCount = 1_000_000
-) throws -> Vanity {
-	var attempt: AttemptCount = 0
+	onResult: @Sendable (Vanity) async throws -> Void
+) async throws {
 	try validate(suffix: targetSuffix)
 	var mnemonic: Mnemonic!
 	var hdRoot: HD.Root!
-	let timeStart = DispatchTime.now()
 	
 	var rawSeed: BigUInt = try {
 		if deterministic {
@@ -93,16 +112,9 @@ public func findMnemonicFor(
 		}
 	}()
 	
-	while attempt < maxAttempts {
+	while true {
 		defer {
-			attempt += 1
 			rawSeed += 1
-		}
-//		if attempt.isMultiple(of: 100_000) {
-//			print("⏳ \(attempt) Mnemonics tried")
-//		}
-		if attempt >= maxAttempts {
-			throw Error.noResultAfter(attempts: maxAttempts)
 		}
 		mnemonic = try Mnemonic(
 			entropy: .init(data: rawSeed.data(byteCount: 32)),
@@ -125,25 +137,20 @@ public func findMnemonicFor(
 			)
 			let address = addressObj.asStr()
 			if address.hasSuffix(targetSuffix) {
-				let timeEnd = DispatchTime.now()
-				let nanoTime = timeEnd.uptimeNanoseconds - timeStart.uptimeNanoseconds // << Difference in nano seconds (UInt64)
-				let elapsedTime = TimeInterval(nanoTime) / 1_000_000_000 // Technically could overflow for long running tests
-				return Vanity(
+				let result = Vanity(
 					mnemonic: mnemonic,
 					address: address,
 					details: .init(
 						derivationPath: derivationPath.fullPath.toString(),
 						privateKey: privateKey.privateKey!,
-						elapsedTime: elapsedTime,
 						accountsAtLowerIndex: accountsAtLowerIndex
 					),
 					input: .init(
 						targetSuffix: targetSuffix,
-						attempt: attempt,
-						maxAttempts: maxAttempts,
 						maxDerivationIndexPerMnemonicAttempt: maxDerivationIndexPerMnemonicAttempt
 					)
 				)
+				try await onResult(result)
 			} else {
 				accountsAtLowerIndex.append(
 					AccountsAtLowerIndex(
@@ -155,7 +162,6 @@ public func findMnemonicFor(
 		}
 	}
 	
-	throw Error.noResultAfter(attempts: attempt)
 }
 
 extension BigUInt {
@@ -171,34 +177,4 @@ extension BigUInt {
 		serialized.append(contentsOf: bytes)
 		return serialized
 	}
-	/*
-	 
-	 /// Return a `Data` value that contains the base-256 representation of this integer, in network (big-endian) byte order.
-  public func serialize() -> Data {
-	  // This assumes Digit is binary.
-	  precondition(Word.bitWidth % 8 == 0)
-
-	  let byteCount = (self.bitWidth + 7) / 8
-
-	  guard byteCount > 0 else { return Data() }
-
-	  var data = Data(count: byteCount)
-	  data.withUnsafeMutableBytes { buffPtr in
-		  let p = buffPtr.bindMemory(to: UInt8.self)
-		  var i = byteCount - 1
-		  for var word in self.words {
-			  for _ in 0 ..< Word.bitWidth / 8 {
-				  p[i] = UInt8(word & 0xFF)
-				  word >>= 8
-				  if i == 0 {
-					  assert(word == 0)
-					  break
-				  }
-				  i -= 1
-			  }
-		  }
-	  }
-	  return data
-  }
-	 */
 }
