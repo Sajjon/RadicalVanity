@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 struct ResultTab: View {
 	@Bindable var model: Model
 	var body: some View {

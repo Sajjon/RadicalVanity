@@ -10,6 +10,7 @@ import SwiftUI
 import RadicalVanity
 import IdentifiedCollections
 
+@MainActor
 @Observable
 public final class Model {
 	public var results: IdentifiedArrayOf<SearchResult> = []
@@ -17,28 +18,24 @@ public final class Model {
 	public var error: String?
 	public var duration: Duration = .zero
 	var searchTask: SearchTask?
-	public var deterministic = false
+	public var deterministic = true
 	public var isShowingSearchHasRunLongTimeWarning = false
 	public var isShowingAreYouSureWannaClearResultsWarning = false
 	public init() {}
 }
 
-@Observable
-public final class SearchTask {
-	private var task: Task<Void, Error>?
-	public let target: String
+public struct SearchTask {
+	@ObservationIgnored private var task: Task<Void, Error>?
+	@ObservationIgnored public let target: String
 	
 	func cancel() {
-		task?.cancel()
-	}
-	deinit {
 		task?.cancel()
 	}
 	init(
 		target: String,
 		deterministic: Bool,
-		onTick: @escaping @Sendable (Duration) -> Void,
-		onResult: @escaping @Sendable (Vanity) -> Void
+		onTick: @escaping @Sendable (Duration) async -> Void,
+		onResult: @escaping @Sendable (Vanity) async -> Void
 	) {
 		self.target = target
 		self.task = Task {
@@ -49,7 +46,7 @@ public final class SearchTask {
 					while true {
 						try Task.checkCancellation()
 						try await Task.sleep(for: .seconds(1))
-						onTick(start.duration(to: .now))
+						await onTick(start.duration(to: .now))
 					}
 				}
 				_ = group.addTaskUnlessCancelled(priority: .high) {
@@ -59,7 +56,7 @@ public final class SearchTask {
 							suffix: suffix,
 							deterministic: deterministic
 						)
-						onResult(result)
+						await onResult(result)
 					}
 				}
 				
@@ -85,8 +82,25 @@ extension Model {
 	public var searchHasRunLongTime: Bool {
 		duration >= .minutes(20)
 	}
-	
+	public func update(duration: Duration) async {
+		self.duration = duration
+	}
+	public func append(result: Vanity) async {
+		self.results.append(.init(result: result))
+	}
 	public func start(force: Bool = false) {
+		do {
+			try validate(suffix: target)
+			if target.count > 6 {
+				self.error = String(describing: "Cannot search for longer suffix than 6. Will never finish.")
+				return
+			}
+			self.error = nil
+		} catch {
+			self.error = String(describing: error)
+			return
+		}
+		
 		if !force && warnLongRunSearchInProgressIfNeeded() {
 			return
 		}
@@ -97,12 +111,12 @@ extension Model {
 			target: target,
 			deterministic: deterministic
 		) {
-			self.duration = $0
+			await self.update(duration: $0)
 		} onResult: {
 			if playSound {
 				AudioServicesPlaySystemSound(1026)
 			}
-			self.results.append(.init(result: $0))
+			await self.append(result: $0)
 		}
 	}
 	
@@ -129,18 +143,7 @@ extension Model {
 	public func dismissSearchHasRunLongTimeWarning() {
 		isShowingSearchHasRunLongTimeWarning = false
 	}
-	
-	public var canSearch: Bool {
-		guard !target.isEmpty && target.count <= 6 else { return false }
-		do {
-			try validate(suffix: target)
-			self.error = nil
-			return true
-		} catch {
-			self.error = String(describing: error)
-			return false
-		}
-	}
+
 	public var canStop: Bool {
 		searchTask != nil
 	}

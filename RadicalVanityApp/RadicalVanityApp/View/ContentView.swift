@@ -9,6 +9,7 @@ import SwiftUI
 import RadicalVanity
 import IdentifiedCollections
 
+@MainActor
 struct ContentView: View {
 	@State var model = Model()
 	var body: some View {

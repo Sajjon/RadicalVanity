@@ -68,6 +68,7 @@ public func validate(suffix targetSuffix: String) throws {
 	if let invalidCharacter = invalidCharacterSet.first {
 		throw Error.invalidLetter(invalidCharacter)
 	}
+	
 	// all good
 }
 
