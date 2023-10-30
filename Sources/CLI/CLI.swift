@@ -20,30 +20,33 @@ struct RadicalVanityCLI: AsyncParsableCommand {
 	@Option(name: .shortAndLong, help: "The maximum derivation index to use per mnemonic attempt, meaning a vanity address matching 'target' suffix might be found at index 7, not 0. Higher value leads to faster search.")
 	var indices: Int = 10
 
-	@Argument(help: "The suffix of a vanity Radix address to find mnemonic and derivation path for.")
-	var target: String
+	@Argument(help: "Suffixes of vanity Radix addresses to find mnemonic and derivation path for, comma seperated list, e.g. \"xrd,test\"")
+	var targets: String
 
 	mutating func run() async throws {
-		print("🔮 Searching for `\(target)` 🔮")
+		print("🔮 Searching for `\(targets)` 🔮")
 		if deterministic {
 			print("⚠️ WARNING determinism used, unsafe. ⚠️")
 		}
-		guard target.count >= 1 else {
-			throw Error.targetSuffixLengthMustBeGreaterThanZero
-		}
-		guard target.count < 7 else {
-			throw Error.targetSuffixLengthMustBeShorterThanSeven
+		let targetList = splitIntoTargets(commaSeperatedString: targets)
+		for target in targetList {
+			guard target.count >= 1 else {
+				throw Error.targetSuffixLengthMustBeGreaterThanZero
+			}
+			guard target.count < 7 else {
+				throw Error.targetSuffixLengthMustBeShorterThanSeven
+			}
 		}
 		guard indices >= 1 else {
 			throw Error.indicesMustBeGreaterThanZero
 		}
-		try await search()
+		try await search(targets: targetList)
 	}
 	
-	func search() async throws {
+	func search(targets: [String]) async throws {
 		
 		try await findMnemonicFor(
-			suffix: target,
+			targets: targets,
 			deterministic: deterministic,
 			maxDerivationIndexPerMnemonicAttempt: .init(indices - 1)
 		) { vanity in
