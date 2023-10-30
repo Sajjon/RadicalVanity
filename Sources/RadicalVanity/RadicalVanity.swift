@@ -16,6 +16,11 @@ public struct AccountsAtLowerIndex: Sendable, Hashable {
 	public let address: String
 }
 
+/// splits "aa,xx" -> ["aa", "xx"], also trims so "aa, xx" is also valid.
+public func splitIntoTargets(commaSeperatedString: String) -> [String] {
+	commaSeperatedString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+}
+
 public struct Vanity: Sendable, Hashable, CustomStringConvertible {
 	public let mnemonic: Mnemonic
 	public let address: String
@@ -95,12 +100,14 @@ public func validate(suffix targetSuffix: String) throws {
 
 /// Attempts to find a mnemonic for an address ending with `suffix`
 public func findMnemonicFor(
-	suffix targetSuffix: String,
+	targets: [String],
 	deterministic: Bool = false,
 	maxDerivationIndexPerMnemonicAttempt: HD.Path.Component.Child.Value = 20,
 	onResult: @Sendable (Vanity) async throws -> Void
 ) async throws {
-	try validate(suffix: targetSuffix)
+	for target in targets {
+		try validate(suffix: target)
+	}
 	var mnemonic: Mnemonic!
 	var hdRoot: HD.Root!
 	
@@ -136,22 +143,28 @@ public func findMnemonicFor(
 				networkId: network.rawValue
 			)
 			let address = addressObj.asStr()
-			if address.hasSuffix(targetSuffix) {
-				let result = Vanity(
-					mnemonic: mnemonic,
-					address: address,
-					details: .init(
-						derivationPath: derivationPath.fullPath.toString(),
-						privateKey: privateKey.privateKey!,
-						accountsAtLowerIndex: accountsAtLowerIndex
-					),
-					input: .init(
-						targetSuffix: targetSuffix,
-						maxDerivationIndexPerMnemonicAttempt: maxDerivationIndexPerMnemonicAttempt
+			var foundAny = false
+			for target in targets { // can get multiple matches
+				if address.hasSuffix(target) {
+					let result = Vanity(
+						mnemonic: mnemonic,
+						address: address,
+						details: .init(
+							derivationPath: derivationPath.fullPath.toString(),
+							privateKey: privateKey.privateKey!,
+							accountsAtLowerIndex: accountsAtLowerIndex
+						),
+						input: .init(
+							targetSuffix: target,
+							maxDerivationIndexPerMnemonicAttempt: maxDerivationIndexPerMnemonicAttempt
+						)
 					)
-				)
-				try await onResult(result)
-			} else {
+					foundAny = true
+					try await onResult(result)
+				}
+			}
+	
+			if !foundAny {
 				accountsAtLowerIndex.append(
 					AccountsAtLowerIndex(
 						index: index,

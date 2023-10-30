@@ -44,7 +44,7 @@ extension SearchTab {
 	@ViewBuilder
 	var currentSearch: some View {
 		if let searchTask = model.searchTask {
-			Text("Searching for: '\(searchTask.target)' #\(model.resultsForCurrentTarget.count) hits")
+			Text("Searching for: '\(searchTask.targetsDescription())' #\(model.resultsForCurrentTargets.count) hits")
 			ProgressView("Elapsed: \(model.duration.formatted())")
 		}
 	}
@@ -68,7 +68,8 @@ extension SearchTab {
 	
 	@ViewBuilder
 	var textField: some View {
-		TextField("Target", text: $model.target)
+		Text("Comma seperated targets")
+		TextField("alex,1337,zz", text: $model.targetsString)
 		#if os(iOS)
 			.textInputAutocapitalization(.never)
 		#endif
@@ -93,7 +94,7 @@ extension SearchTab {
 	
 	@ViewBuilder
 	var tab: some View {
-		if let currentTarget = model.searchTask?.target {
+		if let currentTarget = model.searchTask?.targetsDescription(charLimit: 7) {
 			Label("\"\(currentTarget)\"", systemImage: "hourglass.and.lock")
 		} else {
 			Label("Search", systemImage: "plus.magnifyingglass")

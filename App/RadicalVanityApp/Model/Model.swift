@@ -14,7 +14,7 @@ import IdentifiedCollections
 @Observable
 public final class Model {
 	public var results: IdentifiedArrayOf<SearchResult> = []
-	public var target = "eee" // 15 sec ATM
+	public var targetsString = "aa,00"
 	public var error: String?
 	public var duration: Duration = .zero
 	var searchTask: SearchTask?
@@ -22,25 +22,35 @@ public final class Model {
 	public var isShowingSearchHasRunLongTimeWarning = false
 	public var isShowingAreYouSureWannaClearResultsWarning = false
 	public init() {}
+
+	public var targets: [String] {
+		splitIntoTargets(commaSeperatedString: targetsString)
+	}
 }
 
 public struct SearchTask {
 	@ObservationIgnored private var task: Task<Void, Error>?
-	@ObservationIgnored public let target: String
+	@ObservationIgnored public let targets: [String]
+	public func targetsDescription(charLimit: Int = 13) -> String {
+		let joined = targets.joined(separator: ",")
+		if joined.count <= charLimit {
+			return joined
+		}
+		return "#\(targets.count)🎯"
+	}
 	
 	func cancel() {
 		task?.cancel()
 	}
 	init(
-		target: String,
+		targets: [String],
 		deterministic: Bool,
 		onTick: @escaping @Sendable (Duration) async -> Void,
 		onResult: @escaping @Sendable (Vanity) async -> Void
 	) {
-		self.target = target
+		self.targets = targets
 		self.task = Task {
 			let start = ContinuousClock.now
-			let suffix = target
 			await withThrowingTaskGroup(of: Void.self, returning: Void.self) { group in
 				_ = group.addTaskUnlessCancelled(priority: .high) {
 					while true {
@@ -53,7 +63,7 @@ public struct SearchTask {
 					while true {
 						try Task.checkCancellation()
 						try await findMnemonicFor(
-							suffix: suffix,
+							targets: targets,
 							deterministic: deterministic,
 							onResult: onResult
 						)
@@ -74,9 +84,9 @@ extension Model {
 		results.filter(\.isNew)
 	}
 	
-	public var resultsForCurrentTarget: IdentifiedArrayOf<SearchResult> {
+	public var resultsForCurrentTargets: IdentifiedArrayOf<SearchResult> {
 		guard let searchTask else { return [] }
-		return results.filter { $0.result.input.targetSuffix == searchTask.target }
+		return results.filter { r in searchTask.targets.contains(r.result.input.targetSuffix) }
 	}
 	
 	public var searchHasRunLongTime: Bool {
@@ -89,11 +99,15 @@ extension Model {
 		self.results.append(.init(result: result))
 	}
 	public func start(force: Bool = false) {
+		var playSound = false
 		do {
-			try validate(suffix: target)
-			if target.count > 6 {
-				self.error = String(describing: "Cannot search for longer suffix than 6. Will never finish.")
-				return
+			for target in targets {
+				try validate(suffix: target)
+				if target.count > 6 {
+					self.error = String(describing: "Cannot search for longer suffix than 6. Will never finish.")
+					return
+				}
+				playSound = playSound || target.count >= 4
 			}
 			self.error = nil
 		} catch {
@@ -106,14 +120,14 @@ extension Model {
 		}
 		self.duration = .zero
 		self.searchTask?.cancel()
-		let playSound = target.count >= 4
+		let _playSound = playSound
 		self.searchTask = SearchTask(
-			target: target,
+			targets: targets,
 			deterministic: deterministic
 		) {
 			await self.update(duration: $0)
 		} onResult: {
-			if playSound {
+			if _playSound {
 				AudioServicesPlaySystemSound(1026)
 			}
 			await self.append(result: $0)

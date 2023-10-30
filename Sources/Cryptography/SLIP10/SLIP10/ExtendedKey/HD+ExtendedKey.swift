@@ -280,7 +280,7 @@ func keyAndChainCode<Curve: SLIP10CurveProtocol>(
 		let iR = Data(i.suffix(32))
 
 		chainCode = iR
-		let iL = BigUInt(iLData)
+		let iL = BigUInt.init(iLData)
 		if Curve.isCurve25519 {
 			secretKey = iL
 		} else {

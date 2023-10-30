@@ -24,6 +24,7 @@ struct RadicalVanityCLI: AsyncParsableCommand {
 	var target: String
 
 	mutating func run() async throws {
+		print("🔮 Searching for `\(target)` 🔮")
 		if deterministic {
 			print("⚠️ WARNING determinism used, unsafe. ⚠️")
 		}
